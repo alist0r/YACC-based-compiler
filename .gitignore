@@ -1,0 +1,7 @@
+*.out
+lex.yy.c
+*.output
+y.tab.c
+y.tab.h
+*.gch
+*.txt
