@@ -34,20 +34,19 @@ struct label {
         char *str;
 };
 
-struct register_ {
-	bool is_reg;
-	enum regs reg;
-};
-
-struct memory {
-	bool is_reg;
+struct memory_offset {
 	bool is_global;
 	int offset;
 };
 
-union memory_location {
-	struct register_ reg;
-	struct memory mem;
+union memory {
+	enum regs reg;
+	struct memory_offset mem;
+};
+
+struct memory_location {
+	bool is_reg;
+	union memory mem;
 };
 
 }
@@ -56,7 +55,7 @@ union memory_location {
 	struct string_lit str_lit;
 	struct label lab;
 	enum symbol_type type;
-	union memory_location memloc;
+	struct memory_location memloc;
 	enum regs reg;
 }
 %type <lab> Definition
@@ -92,13 +91,18 @@ DefArgs: Definition
        | Definition COMMA DefArgs
        |
        ;
-Assignment: Definition MOV Exp
+Assignment: Definition MOV Exp {
+		if (look_up(TABLE, $1.str) == NULL) {
+			yyerror("undefined reference");
+		}printf("\t(=, -%d, ACC)\n", look_up(TABLE, $1.str)->stack_offset);
+}
 	  | ID {
 		if (look_up(TABLE, $1.str) == NULL) {
 			yyerror("undefined reference");
 		}
-	    } MOV Exp
-          | Definition 
+	    } MOV Exp {printf("\t(=, -%d, ACC)\n", look_up(TABLE, $1.str)->stack_offset);
+}
+          | Definition {printf("\t hi");}
           |
           ;
 Body: Assignment SEMICOLON Body
@@ -114,15 +118,29 @@ Condition: IF LEFT_PARENTHESES Exp RIGHT_PARENTHESES LEFT_CURLY Body RIGHT_CURLY
 Loop: FOR LEFT_PARENTHESES Assignment SEMICOLON Exp SEMICOLON Assignment RIGHT_PARENTHESES LEFT_CURLY RIGHT_CURLY
     ;
 Exp: Add {
-	if ($1.reg.reg != ACC) {
-		printf("\t(=, ACC, R%d)\n", $1.reg.reg - 1);
-		free_reg(REGS, $1.reg.reg);
+	if ($1.mem.reg != ACC) {
+		printf("\t(=, ACC, R%d)\n", $1.mem.reg - 1);
+		free_reg(REGS, $1.mem.reg);
 	}
 }
    ;
-Add: Add ADD Mul { //TODO if not stored in a register the result of addition needs to be in a register
-	printf("\t(+, R%d, R%d)\n", $1.reg.reg -1, $3.reg.reg-1);
-	free_reg(REGS, $3.reg.reg);
+Add: Add ADD Mul {
+   if ($1.is_reg && $3.is_reg) {
+	printf("\t(+, R%d, R%d)\n", $1.mem.reg -1, $3.mem.reg-1);
+	free_reg(REGS, $3.mem.reg);
+	$$ = $1;
+   } else if (!$1.is_reg && $3.is_reg) {
+	printf("\t(+, R%d, -%d)\n", $3.mem.reg -1, $1.mem.mem.offset);
+	$$ = $3;
+   } else if ($1.is_reg && !$3.is_reg) {
+	printf("\t(+, R%d, -%d)\n", $1.mem.reg -1, $3.mem.mem.offset);
+	$$ = $1;
+   } else if (!$1.is_reg && !$3.is_reg) {
+	$$.mem.reg = alloc_reg(REGS);
+	$$.is_reg = true;
+	printf("\t(=, R%d, -%d)\n", $$.mem.reg -1, $1.mem.mem.offset);
+	printf("\t(+, R%d, -%d)\n", $$.mem.reg -1, $3.mem.mem.offset);
+   }
 }
    | Add SUB Mul 
    | Mul
@@ -131,8 +149,21 @@ Mul: Mul MUL Item
    | Mul DIV Item
    | Item
    ;
-Item: ID
-    | LITERAL {$$.reg.reg = alloc_reg(REGS); $$.reg.is_reg = true; printf("\t(=, R%d, %d)\n", $$.reg.reg - 1, $1.val);}
+Item: ID {
+    struct symbol *s = look_up(TABLE, $1.str);
+    if (s == NULL) {
+	yyerror("undefined reference");
+    }
+    $$.is_reg = false;
+    if (s->s_type == GLOBAL_VAR) {
+	$$.mem.mem.is_global = true;
+    } else {
+        $$.mem.mem.is_global = false;
+    }
+    $$.mem.mem.offset = s->stack_offset;
+    s = NULL; //avoiding dangling pointers
+}
+    | LITERAL {$$.mem.reg = alloc_reg(REGS); $$.is_reg = true; printf("\t(=, R%d, %d)\n", $$.mem.reg - 1, $1.val);}
     ;
 %%
 int main(int argc, char **argv) {

@@ -103,6 +103,8 @@ void add_symbol(struct table *head, struct symbol *s) {
 	struct table *current_t;
 	for (current_t = head; current_t->next != NULL; current_t = current_t->next);
 	if (current_t->array[hash(s->name)] == NULL) {
+		s->stack_offset = current_t->stack_offset;
+		current_t->stack_offset += 8; //TODO global scope items are currently effecting this offset
 		current_t->array[hash(s->name)] = (struct node*)malloc(sizeof(struct node));
 		current_t->array[hash(s->name)]->s = s;
 		current_t->array[hash(s->name)]->next = NULL;

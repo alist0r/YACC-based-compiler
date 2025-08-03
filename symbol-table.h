@@ -4,7 +4,7 @@
 
 enum value_type {U64, FLOAT};
 
-enum symbol_type {CONDITION, LABEL, FUNCTIONCALL};
+enum symbol_type {CONDITION, VARIABLE, FUNCTIONCALL, GLOBAL_VAR};
 
 struct symbol {
 	char *name;
