@@ -12,6 +12,7 @@ struct table *TABLE = NULL;
 struct reg_stack *REGS = NULL;
 int yylex();
 int yywrap();
+int LABEL_COUNTER = 0;
 %}
 %code requires {struct integer_lit {
         int type;
@@ -113,14 +114,18 @@ Body: Assignment SEMICOLON Body
     ;
 Return: RETURN Exp {printf("\t(ret)\n");}
       ;
-Condition: IF LEFT_PARENTHESES Exp RIGHT_PARENTHESES LEFT_CURLY Body RIGHT_CURLY
+Condition: IF LEFT_PARENTHESES Exp RIGHT_PARENTHESES{/*printf("\t(cmp ACC, 0)\n\t(jnz, L%d)\n\t(jmp,)"); */} LEFT_CURLY Body RIGHT_CURLY
 	 ;
 Loop: FOR LEFT_PARENTHESES Assignment SEMICOLON Exp SEMICOLON Assignment RIGHT_PARENTHESES LEFT_CURLY RIGHT_CURLY
     ;
 Exp: Add {
-	if ($1.mem.reg != ACC) {
-		printf("\t(=, ACC, R%d)\n", $1.mem.reg - 1);
-		free_reg(REGS, $1.mem.reg);
+	if ($1.is_reg) {
+		if ($1.mem.reg != ACC) {
+			printf("\t(=, ACC, R%d)\n", $1.mem.reg - 1);
+			free_reg(REGS, $1.mem.reg);
+		}
+	} else {
+		printf("\t(=, ACC, -%d)\n", $1.mem.mem.offset);
 	}
 }
    ;
