@@ -1,0 +1,48 @@
+Program -> FuncDec Program .
+Program -> .
+FuncDec -> Declaration "("Args")" Scope .
+Scope -> "{"Items"}" .
+Items -> Scope .
+Items -> Assignment ";" Items .
+Items -> Return ";" Items .
+Items -> Loop .
+Items -> Conditional .
+Items -> .
+Return -> ret Exp .
+Conditional -> if "("Exp")" Scope .
+Loop -> for "("Assignment ";" Exp ";" Assignment")" Scope .
+Assignment -> Declaration "=" Exp .
+Assignment -> id "=" Exp .
+Declaration -> type id .
+Args -> Exp ArgsP .
+ArgsP -> "," Exp ArgsP .
+ArgsP -> .
+Exp -> Add .
+Add -> Mul AddP .
+AddP -> "+" Mul AddP .
+AddP -> "-" Mul AddP .
+AddP -> .
+Mul -> BitShift MulP .
+MulP -> "*" BitShift MulP .
+MulP -> "/" BitShift MulP .
+MulP -> .
+BitShift -> BitNot BitShiftP .
+BitShiftP -> ">>" BitNot BitShiftP .
+BitShiftP -> "<<" BitNot BitShiftP .
+BitShiftP -> .
+BitNot -> BitOr .
+BitNot -> "~" BitOr .
+BitOr -> BitAnd BitOrP .
+BitOrP -> "|" BitAnd BitOrP .
+BitOrP -> .
+BitAnd -> Val BitAndP .
+BitAndP -> "&" Val BitAndP .
+BitAndP -> .
+Val -> "("Exp")" .
+Val -> Var .
+Val -> num .
+Var -> id Function .
+Function -> "("Args")" .
+Function -> .
+
+differentiate args
